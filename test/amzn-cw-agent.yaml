@@ -1,0 +1,76 @@
+---
+###Cloudwatch role should be attached to the ec2 instance###
+- hosts: all    ###servers on which you need to run the cw_agent
+  become: yes
+  remote_user: root
+  gather_facts: true
+  tasks:
+
+
+    - name: Install the cronjob dependencies
+      shell: yum install cronie cronie-anacron -y
+
+
+    - name: Check if Cloudwatch Agent is Installed Already
+      shell: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
+      register: init_status_result
+      ignore_errors: yes
+    
+    - debug:
+        var: init_status_result
+    
+    - name: Create Directory for Downloading Cloudwatch Agent .zip
+      file:
+        path: /opt/aws/amazon-cloudwatch-zip
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+        recurse: no
+      when: init_status_result.failed == true
+    
+    - name: Download Latest Version of Amazon Cloudwatch Agent
+      get_url:
+        url: "https://s3.amazonaws.com/amazoncloudwatch-agent/linux/amd64/latest/AmazonCloudWatchAgent.zip"
+        dest: /opt/aws/amazon-cloudwatch-zip/AmazonCloudWatchAgent.zip
+        mode: 0755
+      when: init_status_result.failed == true
+    
+    - name: Unzip Cloudwatch Download File
+      unarchive:
+        remote_src: yes
+        src: /opt/aws/amazon-cloudwatch-zip/AmazonCloudWatchAgent.zip
+        dest: /opt/aws/amazon-cloudwatch-zip
+      when: init_status_result.failed == true
+    
+    - name: Execute the Installation Script
+      shell: /opt/aws/amazon-cloudwatch-zip/install.sh
+      args:
+        chdir: /opt/aws/amazon-cloudwatch-zip
+      ignore_errors: yes
+      when: init_status_result.failed == true
+    
+    - name: Transfer Cloudwatch Configuration File
+      copy:
+        src: /opt/test/sources/amazon-cloudwatch-agent.json
+        dest: /opt/aws/amazon-cloudwatch-agent/etc
+        owner: root
+        group: root
+        mode: 0755
+      when: init_status_result.failed == true
+    
+    - name: Adding CW agent start command in cron
+      cron:
+        name: "Start the agent at reboot"
+        special_time: reboot
+        job: "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s >> /var/log/cloudwatch.log"
+      when: init_status_result.failed == true   
+
+    - name: Start Amazon Cloudwatch Agent
+      shell: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+    
+    - name: Validate if the agent is running or not
+      shell: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -m ec2 -a status
+      register: out
+    - debug:
+       msg: "{{ out }}"
