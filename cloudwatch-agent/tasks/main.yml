@@ -1,0 +1,12 @@
+---
+# tasks file for cloudwatch-agent
+  
+
+- name: Install apache httpd  (state=present is optional)
+  ansible.builtin.apt:
+    name: lynx
+    state: present
+  with_items:
+    - unzip
+    - libwww-perl
+    - libdatetime-perl

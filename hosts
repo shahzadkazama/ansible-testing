@@ -1,0 +1,8 @@
+localhost ansible_ssh_host=44.200.17.150 ansible_ssh_user=ubuntu ansible_ssh_private_key_file=/root/.ssh/id_rsa
+
+
+
+[linux]
+localhost
+
+[windows]

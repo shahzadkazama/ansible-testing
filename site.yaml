@@ -1,0 +1,13 @@
+- name: Configure instance(s)
+  hosts: all
+  become: yes
+#  become_user: ubuntu
+  gather_facts: False
+
+  vars:
+    unbound_version: 'unbound-1.11.0'
+
+
+
+  roles:
+    - cloudwatch-agent

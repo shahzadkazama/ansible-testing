@@ -1,0 +1,8 @@
+apt update
+apt upgrade -y
+apt install ansible -y
+
+
+
+ansible-galaxy role init cloudwatch-agent
+
